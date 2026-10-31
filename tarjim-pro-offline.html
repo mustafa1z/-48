@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarjim Pro</title>
+<style>
+/* Layout: one calm workbench. Language bar on top, source and translation side by side, one run button underneath. */
+:root{
+  --bg:#f3f6f5;
+  --surface:#ffffff;
+  --surface-2:#e8efed;
+  --line:#d0dbd8;
+  --fg:#12201e;
+  --muted:#566663;
+  --accent:#0a6b66;
+  --accent-fg:#ffffff;
+  --accent-soft:#d4ebe8;
+  --warn:#8a5200;
+  --warn-soft:#fbeed3;
+  --danger:#a12c2c;
+  --danger-soft:#f8dcdc;
+  --font:"Segoe UI","Noto Sans Arabic","Noto Naskh Arabic",Tahoma,"Helvetica Neue",Arial,system-ui,sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1413;--surface:#141d1c;--surface-2:#1b2726;--line:#2a3a38;--fg:#e6efed;--muted:#93a8a4;
+    --accent:#4fd1c0;--accent-fg:#04201d;--accent-soft:#123a36;--warn:#e0a84a;--warn-soft:#33260f;
+    --danger:#f08a8a;--danger-soft:#3a1818;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1413;--surface:#141d1c;--surface-2:#1b2726;--line:#2a3a38;--fg:#e6efed;--muted:#93a8a4;
+  --accent:#4fd1c0;--accent-fg:#04201d;--accent-soft:#123a36;--warn:#e0a84a;--warn-soft:#33260f;
+  --danger:#f08a8a;--danger-soft:#3a1818;color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font:15px/1.7 var(--font);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:20px 40px;
+}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1100px;margin-inline:auto;display:flex;flex-direction:column;gap:16px;min-width:0}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:42px;height:42px;border-radius:10px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:600 22px/1 var(--font);flex:none}
+h1{margin:0;font:600 20px/1.2 var(--font);letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.ghost{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:13px}
+.ghost:hover{background:var(--surface-2)}
+
+.notice{padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.6;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn)}
+.notice.error{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+
+.bar{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:end;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.02em}
+select{height:42px;border-radius:8px;border:1px solid var(--line);background:var(--bg);padding:0 10px;width:100%;min-width:0}
+select:hover{border-color:var(--muted)}
+.swap{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);display:grid;place-items:center;cursor:pointer}
+.swap:hover{background:var(--accent-soft);color:var(--accent)}
+.swap svg{width:18px;height:18px}
+
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0}
+.pane{background:var(--surface);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.pane.drag{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.pane-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);min-height:52px}
+.pane-title{font:600 14px/1.3 var(--font)}
+.pane-meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip{display:flex;align-items:center;gap:10px;margin:10px 14px 0;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:13px;min-width:0}
+.chip b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;direction:ltr;text-align:start}
+.chip span{color:var(--muted);font-size:12px;white-space:nowrap}
+.chip button{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:0 4px}
+textarea{flex:1;width:100%;min-height:320px;border:0;background:transparent;resize:vertical;padding:14px;line-height:1.85;font-size:15px;outline:none}
+textarea::placeholder{color:var(--muted);opacity:.8}
+.pane-foot{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.hint{font-size:12px;color:var(--muted);padding:0 14px 10px}
+.btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
+.btn svg{width:15px;height:15px;flex:none}
+.btn:hover:not(:disabled){background:var(--surface-2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:500}
+
+.run{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.run-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.go{flex:1;min-width:200px;height:50px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-fg);font:600 16px var(--font);cursor:pointer}
+.go:hover:not(:disabled){filter:brightness(1.08)}
+.go:disabled{opacity:.5;cursor:not-allowed}
+.stop{height:50px;padding:0 18px;border-radius:10px;border:1px solid var(--danger);background:transparent;color:var(--danger);cursor:pointer}
+.progress{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.status{font-size:13px;color:var(--muted);min-height:1.7em}
+.facts{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.hist h2{margin:0 0 8px;font:600 13px var(--font);color:var(--muted)}
+.hist ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.hist button{width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0}
+.hist button:hover{border-color:var(--accent)}
+.hist .n{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:start}
+.hist .m{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+footer{font-size:12px;color:var(--muted);line-height:1.7}
+
+@media (max-width:820px){
+  .panes{grid-template-columns:1fr}
+  textarea{min-height:240px}
+}
+@media (max-width:420px){
+  .bar{grid-template-columns:1fr}
+  .swap{justify-self:center;transform:rotate(90deg)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap" dir="rtl">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">ت</div>
+      <div>
+        <h1>Tarjim Pro</h1>
+        <p>ترجمة النصوص والملفات بين 16 لغة</p>
+      </div>
+    </div>
+    <button class="ghost" id="themeBtn" type="button">الوضع الداكن</button>
+  </header>
+
+  <div class="notice" id="notice" role="status" hidden></div>
+
+  <section class="bar" aria-label="اختيار اللغات">
+    <div class="field">
+      <label for="src">من</label>
+      <select id="src"></select>
+    </div>
+    <button class="swap" id="swap" type="button" aria-label="تبديل اللغتين" title="تبديل اللغتين">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+    </button>
+    <div class="field">
+      <label for="tgt">إلى</label>
+      <select id="tgt"></select>
+    </div>
+  </section>
+
+  <section class="panes">
+    <div class="pane" id="srcPane">
+      <div class="pane-head">
+        <span class="pane-title">النص الأصلي</span>
+        <span class="pane-meta" id="srcMeta">0 كلمة</span>
+      </div>
+      <div class="chip" id="fileChip" hidden>
+        <b id="fileName"></b><span id="fileInfo"></span>
+        <button type="button" id="fileClear" aria-label="إزالة الملف">×</button>
+      </div>
+      <textarea id="srcText" dir="auto" placeholder="اكتب النص هنا أو الصقه، أو اسحب ملفاً إلى هذه المنطقة." spellcheck="false"></textarea>
+      <div class="hint">الصيغ المدعومة: TXT, SRT, VTT, CSV, MD, DOCX, PDF.</div>
+      <div class="pane-foot">
+        <button class="btn" id="pickBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/></svg>
+          رفع ملف
+        </button>
+        <button class="btn" id="clearBtn" type="button">مسح</button>
+        <input id="fileInput" type="file" hidden accept=".txt,.srt,.vtt,.csv,.md,.docx,.pdf">
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="pane-head">
+        <span class="pane-title" id="outTitle">الترجمة</span>
+        <span class="pane-meta" id="outMeta">0 كلمة</span>
+      </div>
+      <textarea id="outText" readonly placeholder="تظهر الترجمة هنا. ابدأ بالضغط على «ترجم»."></textarea>
+      <div class="pane-foot">
+        <button class="btn primary" id="copyBtn" type="button" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <span id="copyLabel">نسخ</span>
+        </button>
+        <button class="btn" id="dlTxt" type="button" disabled>تحميل نص</button>
+        <button class="btn" id="dlDocx" type="button" disabled>Word ثنائي اللغة</button>
+        <button class="btn" id="dlDocx1" type="button" disabled>Word للترجمة فقط</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="run">
+    <div class="run-row">
+      <button class="go" id="goBtn" type="button">ترجم</button>
+      <button class="stop" id="stopBtn" type="button" hidden>إيقاف</button>
+    </div>
+    <div class="progress" id="progWrap" hidden><i id="progBar"></i></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="facts"><span id="factChunks"></span><span id="engineNote"></span></div>
+  </section>
+
+  <section class="hist" id="histSec" hidden>
+    <h2>آخر الترجمات في هذه الجلسة</h2>
+    <ul id="histList"></ul>
+  </section>
+
+  <footer>عند استخدام الترجمة المدمجة في المتصفح لا يغادر النص جهازك. وإذا لم تتوفر، تُرسل أجزاء النص إلى خدمة MyMemory المجانية عبر الإنترنت. راجع الترجمة قبل استعمالها في وثائق رسمية أو قانونية.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const LANGS = [
+    {c:"ar", ar:"العربية", n:"العربية", rtl:true},
+    {c:"en", ar:"الإنجليزية", n:"English"},
+    {c:"tr", ar:"التركية", n:"Türkçe"},
+    {c:"fa", ar:"الفارسية", n:"فارسی", rtl:true},
+    {c:"fr", ar:"الفرنسية", n:"Français"},
+    {c:"de", ar:"الألمانية", n:"Deutsch"},
+    {c:"es", ar:"الإسبانية", n:"Español"},
+    {c:"ur", ar:"الأردية", n:"اردو", rtl:true},
+    {c:"ku", ar:"الكردية (سوراني)", n:"کوردی", rtl:true},
+    {c:"ru", ar:"الروسية", n:"Русский"},
+    {c:"zh", ar:"الصينية", n:"中文"},
+    {c:"ja", ar:"اليابانية", n:"日本語"},
+    {c:"ko", ar:"الكورية", n:"한국어"},
+    {c:"it", ar:"الإيطالية", n:"Italiano"},
+    {c:"nl", ar:"الهولندية", n:"Nederlands"},
+    {c:"hi", ar:"الهندية", n:"हिन्दी"}
+  ];
+  const MAX_BYTES = 10 * 1024 * 1024;
+  const MAX_CHARS = 60000;
+  const LOCAL_CHUNK = 1800;
+  const WEB_CHUNK = 240;
+  const EXAMPLE = "Dear Mr. Hassan,\n\nThank you for your message. We have reviewed your request and are pleased to confirm the delivery of 120 units to the Basra warehouse on Sunday, 8 November.\n\nPlease let us know if the schedule works for your team, and we will send the shipping documents by Thursday.\n\nBest regards,\nLayla Karim\nOperations Manager";
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    src:$("src"), tgt:$("tgt"), swap:$("swap"),
+    srcText:$("srcText"), outText:$("outText"), srcMeta:$("srcMeta"), outMeta:$("outMeta"), outTitle:$("outTitle"),
+    srcPane:$("srcPane"), fileChip:$("fileChip"), fileName:$("fileName"), fileInfo:$("fileInfo"), fileClear:$("fileClear"),
+    fileInput:$("fileInput"), pickBtn:$("pickBtn"), clearBtn:$("clearBtn"),
+    copyBtn:$("copyBtn"), copyLabel:$("copyLabel"), dlTxt:$("dlTxt"), dlDocx:$("dlDocx"), dlDocx1:$("dlDocx1"),
+    goBtn:$("goBtn"), stopBtn:$("stopBtn"), progWrap:$("progWrap"), progBar:$("progBar"), status:$("status"),
+    factChunks:$("factChunks"), engineNote:$("engineNote"), notice:$("notice"),
+    histSec:$("histSec"), histList:$("histList"), themeBtn:$("themeBtn")
+  };
+
+  const HAS_TR = typeof self.Translator !== "undefined";
+  const HAS_LD = typeof self.LanguageDetector !== "undefined";
+  let file = null, ctl = null, busy = false, history = [], pairs = [], exampleShown = true;
+
+  const lang = (code) => LANGS.find((l) => l.c === code) || LANGS[0];
+
+  /* ---------- setup ---------- */
+  (function fillSelects(){
+    const a = document.createElement("option"); a.value = "auto"; a.textContent = "كشف تلقائي"; el.src.appendChild(a);
+    LANGS.forEach((l) => {
+      [el.src, el.tgt].forEach((s) => {
+        const o = document.createElement("option"); o.value = l.c; o.textContent = l.ar + " — " + l.n; s.appendChild(o);
+      });
+    });
+    el.src.value = "auto"; el.tgt.value = "ar";
+  })();
+  el.srcText.value = EXAMPLE;
+  el.engineNote.textContent = HAS_TR
+    ? "المترجم المدمج في المتصفح يعمل بدون إنترنت بعد تنزيل حزمة كل لغة مرة واحدة."
+    : "هذا المتصفح لا يدعم الترجمة المدمجة. للعمل بدون إنترنت افتح الملف في Chrome أو Edge (الإصدار 138 أو أحدث).";
+
+  function setNotice(msg, isErr){
+    if (!msg){ el.notice.hidden = true; el.notice.textContent = ""; return; }
+    el.notice.textContent = msg; el.notice.className = "notice" + (isErr ? " error" : ""); el.notice.hidden = false;
+  }
+  const setStatus = (msg) => { el.status.textContent = msg || ""; };
+  const countWords = (t) => { t = (t || "").trim(); return t ? t.split(/\s+/).length : 0; };
+
+  function refreshCounts(){
+    const s = el.srcText.value, o = el.outText.value;
+    el.srcMeta.textContent = countWords(s) + " كلمة · " + s.length + " حرف";
+    el.outMeta.textContent = countWords(o) + " كلمة";
+    el.factChunks.textContent = s.trim() ? "عدد الأجزاء: " + splitText(s.trim(), LOCAL_CHUNK).length : "";
+    const has = !!o.trim();
+    el.copyBtn.disabled = !has; el.dlTxt.disabled = !has; el.dlDocx.disabled = !has; el.dlDocx1.disabled = !has;
+  }
+  function refreshTarget(){
+    const l = lang(el.tgt.value);
+    el.outText.dir = l.rtl ? "rtl" : "ltr";
+    el.outTitle.textContent = "الترجمة إلى " + l.ar;
+  }
+  el.tgt.addEventListener("change", refreshTarget);
+  el.srcText.addEventListener("input", () => { exampleShown = false; refreshCounts(); });
+  el.srcText.addEventListener("focus", () => { if (exampleShown) el.srcText.select(); });
+
+  /* theme */
+  const isDark = () => {
+    const t = document.documentElement.getAttribute("data-theme");
+    return t ? t === "dark" : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  };
+  const paintThemeBtn = () => { el.themeBtn.textContent = isDark() ? "الوضع الفاتح" : "الوضع الداكن"; };
+  el.themeBtn.addEventListener("click", () => {
+    document.documentElement.setAttribute("data-theme", isDark() ? "light" : "dark");
+    paintThemeBtn();
+  });
+  paintThemeBtn(); refreshTarget(); refreshCounts();
+
+  /* ---------- files ---------- */
+  const fmtSize = (b) => b < 1048576 ? (b/1024).toFixed(1) + " KB" : (b/1048576).toFixed(1) + " MB";
+  function showFile(f){
+    file = f;
+    if (!f){ el.fileChip.hidden = true; return; }
+    el.fileName.textContent = f.name; el.fileInfo.textContent = fmtSize(f.size); el.fileChip.hidden = false;
+  }
+  function clearAll(){
+    pairs = []; showFile(null); exampleShown = false;
+    el.srcText.value = ""; el.outText.value = ""; setStatus(""); setNotice("");
+    el.progWrap.hidden = true; refreshCounts();
+  }
+  el.clearBtn.addEventListener("click", clearAll);
+  el.fileClear.addEventListener("click", clearAll);
+  el.pickBtn.addEventListener("click", () => el.fileInput.click());
+  el.fileInput.addEventListener("change", () => {
+    const f = el.fileInput.files && el.fileInput.files[0];
+    el.fileInput.value = "";
+    if (f) loadFile(f);
+  });
+  ["dragenter","dragover"].forEach((ev) => el.srcPane.addEventListener(ev, (e) => { e.preventDefault(); el.srcPane.classList.add("drag"); }));
+  ["dragleave","drop"].forEach((ev) => el.srcPane.addEventListener(ev, (e) => { e.preventDefault(); el.srcPane.classList.remove("drag"); }));
+  el.srcPane.addEventListener("drop", (e) => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  const extOf = (name) => { const m = /\.([^.]+)$/.exec(name || ""); return m ? m[1].toLowerCase() : ""; };
+
+  async function loadFile(f){
+    setNotice("");
+    if (f.size > MAX_BYTES){ setNotice("حجم الملف أكبر من 10 ميغا. قسّمه إلى ملفات أصغر.", true); return; }
+    const ext = extOf(f.name);
+    const info = {name:f.name, size:f.size, ext:ext};
+    exampleShown = false;
+    setStatus("جاري قراءة الملف...");
+    try {
+      let text;
+      if (["txt","srt","vtt","csv","md"].includes(ext)) text = await f.text();
+      else if (ext === "docx") text = await readDocx(f);
+      else if (ext === "pdf") text = await readPdf(f);
+      else { setStatus(""); setNotice("صيغة الملف ." + (ext || "؟") + " غير مدعومة. استخدم TXT أو SRT أو CSV أو DOCX أو PDF.", true); return; }
+
+      text = (text || "").replace(/\r\n?/g, "\n");
+      if (!text.trim()){
+        setStatus("");
+        setNotice(ext === "pdf" ? "لا يوجد نص قابل للقراءة في هذا الـ PDF، وقد يكون صفحات ممسوحة ضوئياً." : "الملف لا يحتوي على نص.", true);
+        return;
+      }
+      let cut = false;
+      if (text.length > MAX_CHARS){ text = text.slice(0, MAX_CHARS); cut = true; }
+      pairs = []; showFile(info);
+      el.srcText.value = text; el.outText.value = "";
+      setStatus(cut ? "تم اقتطاع الملف إلى أول " + MAX_CHARS + " حرف. قسّمه لترجمة الباقي." : "تمت قراءة الملف. اضغط «ترجم».");
+      refreshCounts();
+    } catch (err) {
+      setStatus("");
+      setNotice("تعذرت قراءة الملف. " + (err && err.message ? err.message : "جرّب ملفاً آخر أو الصق النص."), true);
+    }
+  }
+
+  /* --- zip helpers (no libraries) --- */
+  async function unzipEntry(buf, wanted){
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    let e = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--){
+      if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+    }
+    if (e < 0) throw new Error("الملف ليس مستند Word صالحاً.");
+    const cnt = dv.getUint16(e + 10, true);
+    let p = dv.getUint32(e + 16, true);
+    for (let i = 0; i < cnt; i++){
+      if (dv.getUint32(p, true) !== 0x02014b50) break;
+      const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+      const nlen = dv.getUint16(p + 28, true), elen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
+      const off = dv.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nlen));
+      if (name === wanted){
+        const ln = dv.getUint16(off + 26, true), le = dv.getUint16(off + 28, true);
+        const start = off + 30 + ln + le;
+        const data = u8.subarray(start, start + csize);
+        if (method === 0) return data;
+        if (method === 8){
+          const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+          return new Uint8Array(await new Response(stream).arrayBuffer());
+        }
+        throw new Error("طريقة ضغط الملف غير مدعومة.");
+      }
+      p += 46 + nlen + elen + clen;
+    }
+    return null;
+  }
+
+  function crc32(u8){
+    let t = crc32.t;
+    if (!t){
+      t = crc32.t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++){
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+    }
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < u8.length; i++) c = t[(c ^ u8[i]) & 255] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function makeZip(files, mime){
+    const enc = new TextEncoder(), parts = [], central = [];
+    let offset = 0;
+    files.forEach((f) => {
+      const name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data), size = data.length;
+      const lh = new Uint8Array(30 + name.length), lv = new DataView(lh.buffer);
+      lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true); lv.setUint16(10, 0, true); lv.setUint16(12, 0x21, true);
+      lv.setUint32(14, crc, true); lv.setUint32(18, size, true); lv.setUint32(22, size, true);
+      lv.setUint16(26, name.length, true); lv.setUint16(28, 0, true); lh.set(name, 30);
+      parts.push(lh, data);
+      const ch = new Uint8Array(46 + name.length), cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true); cv.setUint16(12, 0, true); cv.setUint16(14, 0x21, true);
+      cv.setUint32(16, crc, true); cv.setUint32(20, size, true); cv.setUint32(24, size, true);
+      cv.setUint16(28, name.length, true); cv.setUint32(42, offset, true); ch.set(name, 46);
+      central.push(ch);
+      offset += lh.length + size;
+    });
+    const cdSize = central.reduce((a, c) => a + c.length, 0);
+    const end = new Uint8Array(22), ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+    ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end]), {type:mime});
+  }
+
+  async function readDocx(f){
+    if (typeof DecompressionStream === "undefined") throw new Error("هذا المتصفح لا يدعم فك ضغط الملفات. استخدم Chrome أو Edge.");
+    const data = await unzipEntry(await f.arrayBuffer(), "word/document.xml");
+    if (!data) throw new Error("الملف ليس مستند Word صالحاً.");
+    const NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    const doc = new DOMParser().parseFromString(new TextDecoder("utf-8").decode(data), "application/xml");
+    const paras = doc.getElementsByTagNameNS(NS, "p"), out = [];
+    for (let i = 0; i < paras.length; i++){
+      let line = "";
+      const walker = paras[i].getElementsByTagNameNS("*", "*");
+      for (let j = 0; j < walker.length; j++){
+        const n = walker[j];
+        if (n.namespaceURI !== NS) continue;
+        if (n.localName === "t") line += n.textContent;
+        else if (n.localName === "tab") line += "\t";
+        else if (n.localName === "br") line += "\n";
+      }
+      out.push(line);
+    }
+    return out.join("\n");
+  }
+
+  /* PDF: pdf.js is loaded only when a PDF is opened, and only if there is a connection */
+  function loadPdfJs(){
+    return new Promise((res, rej) => {
+      if (window.pdfjsLib) return res(window.pdfjsLib);
+      if (!navigator.onLine) return rej(new Error("قراءة PDF تحتاج اتصالاً بالإنترنت لمرة واحدة لتحميل مكتبة القراءة. انسخ النص من الـ PDF والصقه هنا."));
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      s.onload = () => res(window.pdfjsLib);
+      s.onerror = () => rej(new Error("تعذر تحميل مكتبة قراءة PDF. انسخ النص والصقه هنا."));
+      document.head.appendChild(s);
+    });
+  }
+  async function readPdf(f){
+    const lib = await loadPdfJs();
+    try { lib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } catch (e) {}
+    const pdf = await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+    const total = Math.min(pdf.numPages, 80);
+    let text = "";
+    for (let n = 1; n <= total; n++){
+      setStatus("جاري قراءة الصفحة " + n + " من " + total + "...");
+      const tc = await (await pdf.getPage(n)).getTextContent();
+      let line = "", lastY = null, out = "";
+      tc.items.forEach((it) => {
+        const y = it.transform ? it.transform[5] : 0;
+        if (lastY !== null && Math.abs(y - lastY) > 3){ out += line.trim() + "\n"; line = ""; }
+        line += it.str + (it.hasEOL ? "\n" : " ");
+        lastY = y;
+      });
+      text += out + line.trim() + "\n\n";
+    }
+    return text;
+  }
+
+  /* ---------- translation ---------- */
+  function splitText(t, max){
+    t = (t || "").replace(/\r\n?/g, "\n");
+    if (!t.trim()) return [];
+    const chunks = [];
+    let cur = "";
+    const push = () => { if (cur.trim()) chunks.push(cur.replace(/\n+$/, "")); cur = ""; };
+    t.split("\n").forEach((line) => {
+      if (line.length > max){
+        push();
+        let buf = "";
+        line.split(/(?<=[.!?؟。！？])\s+/).forEach((p) => {
+          if (p.length > max){
+            if (buf){ chunks.push(buf); buf = ""; }
+            for (let i = 0; i < p.length; i += max) chunks.push(p.slice(i, i + max));
+            return;
+          }
+          if ((buf + " " + p).length > max){ chunks.push(buf); buf = p; }
+          else buf = buf ? buf + " " + p : p;
+        });
+        if (buf) chunks.push(buf);
+        return;
+      }
+      if (cur.length + line.length + 1 > max) push();
+      cur += line + "\n";
+    });
+    push();
+    return chunks;
+  }
+
+  function guessLang(t){
+    if (/[؀-ۿ]/.test(t)) return "ar";
+    if (/[Ѐ-ӿ]/.test(t)) return "ru";
+    if (/[぀-ヿ]/.test(t)) return "ja";
+    if (/[가-힯]/.test(t)) return "ko";
+    if (/[一-鿿]/.test(t)) return "zh";
+    if (/[ऀ-ॿ]/.test(t)) return "hi";
+    return "en";
+  }
+  async function detect(text){
+    if (HAS_LD){
+      try {
+        const d = await self.LanguageDetector.create();
+        const r = await d.detect(text.slice(0, 1200));
+        const code = r && r[0] && r[0].detectedLanguage ? String(r[0].detectedLanguage).split("-")[0].toLowerCase() : "";
+        if (LANGS.some((l) => l.c === code)) return code;
+      } catch (e) {}
+    }
+    return guessLang(text);
+  }
+
+  async function memoryTranslate(chunk, s, t, signal){
+    if (!chunk.trim()) return chunk;
+    const map = {zh:"zh-CN", ku:"ckb"};
+    const url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(chunk) + "&langpair=" + (map[s] || s) + "|" + (map[t] || t);
+    let r;
+    try { r = await fetch(url, {signal}); }
+    catch (e) { throw (e && e.name === "AbortError") ? {code:"cancelled"} : {code:"offline"}; }
+    if (!r.ok) throw {code:"upstream_error"};
+    const j = await r.json();
+    const x = j && j.responseData && j.responseData.translatedText;
+    if (!x || (j.responseStatus && Number(j.responseStatus) !== 200)) throw {code:"upstream_error"};
+    return x;
+  }
+
+  async function pickEngine(text){
+    let s = el.src.value; const t = el.tgt.value;
+    if (s === "auto") s = await detect(text);
+    if (s === t) return {max:LOCAL_CHUNK, translate:async (c) => c, note:"النص مكتوب أصلاً باللغة الهدف."};
+    if (HAS_TR){
+      try {
+        const av = await self.Translator.availability({sourceLanguage:s, targetLanguage:t});
+        if (av !== "unavailable"){
+          const tr = await self.Translator.create({
+            sourceLanguage:s, targetLanguage:t,
+            monitor(m){ m.addEventListener("downloadprogress", (e) => setStatus("جاري تنزيل حزمة اللغة " + Math.round(e.loaded * 100) + "% (مرة واحدة فقط)...")); }
+          });
+          return {max:LOCAL_CHUNK, translate:(c, signal) => tr.translate(c, {signal})};
+        }
+      } catch (e) {
+        if (e && e.name === "AbortError") throw {code:"cancelled"};
+      }
+    }
+    if (navigator.onLine) return {max:WEB_CHUNK, translate:(c, signal) => memoryTranslate(c, s, t, signal)};
+    throw {code: HAS_TR ? "pair_offline" : "no_engine"};
+  }
+
+  const ERR = {
+    no_engine:"لا يوجد مترجم يعمل بدون إنترنت في هذا المتصفح. افتح الملف في Chrome أو Edge (الإصدار 138 أو أحدث)، أو اتصل بالإنترنت.",
+    pair_offline:"هذا الزوج من اللغات غير مدعوم في الترجمة المدمجة. اتصل بالإنترنت لاستخدام الترجمة المجانية أو اختر لغتين أخريين.",
+    offline:"تعذر الاتصال بخدمة الترجمة. تأكد من الإنترنت ثم أعد المحاولة.",
+    upstream_error:"فشلت الترجمة أو وصلت إلى حد الخدمة المجانية. انتظر قليلاً ثم اضغط «ترجم» من جديد."
+  };
+
+  function setBusy(b){
+    busy = b;
+    el.goBtn.disabled = b;
+    el.stopBtn.hidden = !b;
+    el.progWrap.hidden = !b;
+    [el.src, el.tgt, el.swap, el.pickBtn, el.clearBtn].forEach((x) => { x.disabled = b; });
+    el.goBtn.textContent = b ? "جاري الترجمة..." : "ترجم";
+  }
+
+  async function run(){
+    if (busy) return;
+    const text = el.srcText.value.trim();
+    if (!text){ setStatus("اكتب نصاً أو ارفع ملفاً أولاً."); return; }
+    setNotice("");
+    ctl = new AbortController();
+    const signal = ctl.signal;
+    setBusy(true);
+    el.outText.value = ""; pairs = []; refreshCounts();
+    el.progBar.style.width = "4%";
+    const started = Date.now(), done = [];
+    try {
+      setStatus("جاري تجهيز المترجم...");
+      const eng = await pickEngine(text);
+      const chunks = splitText(text, eng.max), n = chunks.length;
+      for (let i = 0; i < n; i++){
+        if (signal.aborted) throw {code:"cancelled"};
+        setStatus(n > 1 ? "جاري ترجمة الجزء " + (i + 1) + " من " + n + "..." : "جاري الترجمة...");
+        let out;
+        try { out = await eng.translate(chunks[i], signal); }
+        catch (e) { throw (e && e.name === "AbortError") ? {code:"cancelled"} : e; }
+        out = String(out).replace(/\s+$/, "");
+        done.push(out); pairs.push({s:chunks[i], t:out});
+        el.outText.value = done.join("\n");
+        el.progBar.style.width = Math.round((i + 1) / n * 100) + "%";
+        refreshCounts();
+      }
+      setStatus("اكتملت الترجمة في " + Math.max(1, Math.round((Date.now() - started) / 1000)) + " ثانية." + (eng.note ? " " + eng.note : ""));
+      addHistory();
+    } catch (e) {
+      e = e || {};
+      if (e.code === "cancelled") setStatus("تم الإيقاف. بقي ما تُرجم حتى الآن.");
+      else { setStatus(""); setNotice(ERR[e.code] || ERR.upstream_error, true); }
+    } finally {
+      setBusy(false); ctl = null; refreshCounts();
+    }
+  }
+  el.goBtn.addEventListener("click", run);
+  el.stopBtn.addEventListener("click", () => { if (ctl) ctl.abort(); });
+
+  /* swap */
+  el.swap.addEventListener("click", () => {
+    pairs = [];
+    const s = el.src.value, t = el.tgt.value;
+    el.src.value = t; el.tgt.value = s === "auto" ? (t === "en" ? "ar" : "en") : s;
+    const o = el.outText.value;
+    if (o.trim()){ el.srcText.value = o; el.outText.value = ""; exampleShown = false; }
+    refreshTarget(); refreshCounts();
+  });
+
+  /* ---------- output actions ---------- */
+  let copyTimer = null;
+  el.copyBtn.addEventListener("click", () => {
+    const ok = () => {
+      el.copyLabel.textContent = "تم النسخ";
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => { el.copyLabel.textContent = "نسخ"; }, 1600);
+    };
+    const fallback = () => {
+      el.outText.focus(); el.outText.select();
+      try { if (document.execCommand("copy")) ok(); else setStatus("حدد النص وانسخه يدوياً."); }
+      catch (e) { setStatus("حدد النص وانسخه يدوياً."); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(el.outText.value).then(ok, fallback);
+    else fallback();
+  });
+
+  function baseName(){
+    const n = file ? file.name.replace(/\.[^.]+$/, "") : "translation";
+    return n.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80) || "translation";
+  }
+  function saveFile(name, data, mime){
+    const blob = data instanceof Blob ? data : new Blob([data], {type:mime || "text/plain;charset=utf-8"});
+    const u = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 3000);
+    setStatus("تم حفظ الملف.");
+  }
+  el.dlTxt.addEventListener("click", () => {
+    const ext = file && (file.ext === "csv" || file.ext === "md") ? file.ext : "txt";
+    saveFile("translated-" + el.tgt.value + "-" + baseName() + "." + ext, el.outText.value);
+  });
+  el.dlDocx1.addEventListener("click", () => {
+    saveFile("translated-" + el.tgt.value + "-" + baseName() + ".docx", buildDocx(el.outText.value, !!lang(el.tgt.value).rtl));
+  });
+  el.dlDocx.addEventListener("click", () => {
+    const has = pairs.some((p) => p.s && p.s.trim());
+    const blob = has ? buildBilingual() : buildDocx(el.outText.value, !!lang(el.tgt.value).rtl);
+    saveFile((has ? "bilingual-" : "translated-") + el.tgt.value + "-" + baseName() + ".docx", blob);
+  });
+
+  const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  function xmlEsc(s){ return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function isRtlText(t){
+    const a = (t.match(/[֐-ࣿ]/g) || []).length;
+    const l = (t.match(/[A-Za-zÀ-ɏЀ-ӿ]/g) || []).length;
+    return a > l;
+  }
+  function packDocx(doc){
+    return makeZip([
+      {name:"[Content_Types].xml", text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'},
+      {name:"_rels/.rels", text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'},
+      {name:"word/document.xml", text:doc}
+    ], DOCX_MIME);
+  }
+  function buildDocx(text, rtl){
+    const paras = text.split("\n").map((l) =>
+      "<w:p><w:pPr>" + (rtl ? "<w:bidi/>" : "") + "</w:pPr><w:r>" + (rtl ? "<w:rPr><w:rtl/></w:rPr>" : "") +
+      '<w:t xml:space="preserve">' + xmlEsc(l) + "</w:t></w:r></w:p>").join("");
+    return packDocx('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + paras +
+      '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>');
+  }
+
+  function buildBilingual(){
+    const SRC = "1F3864", TR = "0B7A5C", SRC_BG = "EAF0FB", TR_BG = "E6F6EE", GRAY = "6B7280";
+    const tRtl = !!lang(el.tgt.value).rtl;
+    const run = (text, color, bold, rtl, size) => {
+      const rpr = '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Arial"/>' + (bold ? "<w:b/><w:bCs/>" : "") +
+        '<w:color w:val="' + color + '"/><w:sz w:val="' + size + '"/><w:szCs w:val="' + size + '"/>' + (rtl ? "<w:rtl/>" : "") + "</w:rPr>";
+      const inner = text.split("\n").map((l, i) => (i ? "<w:br/>" : "") + '<w:t xml:space="preserve">' + xmlEsc(l) + "</w:t>").join("");
+      return "<w:r>" + rpr + inner + "</w:r>";
+    };
+    const box = (c) => '<w:pBdr><w:top w:val="single" w:sz="4" w:space="4" w:color="' + c + '"/><w:left w:val="single" w:sz="4" w:space="6" w:color="' + c + '"/>' +
+      '<w:bottom w:val="single" w:sz="4" w:space="4" w:color="' + c + '"/><w:right w:val="single" w:sz="4" w:space="6" w:color="' + c + '"/></w:pBdr>';
+    const para = (text, o) => {
+      const ppr = "<w:pPr>" + (o.keepNext ? "<w:keepNext/>" : "") + (o.fill ? box(o.fill) + '<w:shd w:val="clear" w:color="auto" w:fill="' + o.fill + '"/>' : "") +
+        (o.rtl ? "<w:bidi/>" : "") + '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after || 0) + '" w:line="340" w:lineRule="auto"/>' +
+        (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : "") + "</w:pPr>";
+      return "<w:p>" + ppr + run(text, o.color, o.bold, o.rtl, o.size || 24) + "</w:p>";
+    };
+
+    const segs = [];
+    pairs.forEach((p) => {
+      const sl = (p.s || "").split("\n"), tl = (p.t || "").split("\n");
+      if (p.s && sl.length === tl.length){
+        for (let i = 0; i < sl.length; i++){
+          if (!sl[i].trim() && !tl[i].trim()) continue;
+          segs.push({s:sl[i], t:tl[i]});
+        }
+      } else segs.push({s:(p.s || "").trim(), t:(p.t || "").trim()});
+    });
+
+    const sName = el.src.value === "auto" ? "كشف تلقائي" : lang(el.src.value).ar;
+    const date = new Date().toLocaleDateString("ar-IQ", {year:"numeric", month:"long", day:"numeric"});
+    let body = "";
+    body += para("المستند المترجم", {color:SRC, bold:true, size:44, rtl:true, jc:"center", after:80});
+    body += para(sName + "  ←  " + lang(el.tgt.value).ar + "   ·   " + date, {color:GRAY, size:20, rtl:true, jc:"center", after:100});
+    body += '<w:p><w:pPr><w:bidi/><w:spacing w:before="0" w:after="160"/><w:jc w:val="center"/></w:pPr>' +
+      run("■ النص الأصلي", SRC, true, true, 20) + run("        ", GRAY, false, true, 20) + run("■ الترجمة", TR, true, true, 20) + "</w:p>";
+    body += '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="8" w:space="1" w:color="C7CFDC"/></w:pBdr><w:spacing w:before="0" w:after="200"/></w:pPr></w:p>';
+    segs.forEach((g) => {
+      const hasS = g.s && g.s.trim();
+      if (hasS) body += para(g.s, {color:SRC, fill:SRC_BG, rtl:isRtlText(g.s), keepNext:true, before:140, after:0, size:23});
+      body += para(g.t, {color:TR, fill:TR_BG, rtl:tRtl, before:hasS ? 0 : 140, after:60, size:24});
+    });
+    return packDocx('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + body +
+      '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>');
+  }
+
+  /* ---------- history (this session only) ---------- */
+  function addHistory(){
+    const out = el.outText.value;
+    if (!out.trim()) return;
+    history.unshift({name:file ? file.name : "نص مباشر", src:el.src.value, tgt:el.tgt.value, words:countWords(out), at:new Date(), source:el.srcText.value, out, pairs:pairs.slice()});
+    history = history.slice(0, 6);
+    renderHistory();
+  }
+  function renderHistory(){
+    el.histList.textContent = "";
+    history.forEach((h) => {
+      const li = document.createElement("li"), b = document.createElement("button");
+      b.type = "button";
+      const n = document.createElement("span"); n.className = "n"; n.textContent = h.name;
+      const m = document.createElement("span"); m.className = "m";
+      m.textContent = (h.src === "auto" ? "تلقائي" : lang(h.src).ar) + " ← " + lang(h.tgt).ar + " · " + h.words + " كلمة · " +
+        h.at.toLocaleTimeString("ar-IQ", {hour:"2-digit", minute:"2-digit"});
+      b.appendChild(n); b.appendChild(m);
+      b.addEventListener("click", () => {
+        if (busy) return;
+        el.src.value = h.src; el.tgt.value = h.tgt; refreshTarget();
+        pairs = (h.pairs || []).slice();
+        el.srcText.value = h.source; el.outText.value = h.out; exampleShown = false; refreshCounts();
+      });
+      li.appendChild(b); el.histList.appendChild(li);
+    });
+    el.histSec.hidden = history.length === 0;
+  }
+})();
+</script>
+</body>
+</html>
